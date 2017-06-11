@@ -1,9 +1,10 @@
 <?php
 
-error_reporting(0);
+//error_reporting(0);
 
 date_default_timezone_set('America/Chicago');
 
+require_once("incl.yahoo.historical.data.php");
 require_once("incl.ta.eickhoff.php");
 
 $symbol = $_REQUEST['symbol'];
@@ -68,32 +69,10 @@ if (isset($_REQUEST['mfi']) && $_REQUEST['mfi'] != "") {
 $additionalDaysBack = floor($additionalDaysBack * 1.7);
 
 
-$data = yahoo($symbol, $start, $end, $additionalDaysBack);
-$data = rtrim ($data, "\n\r");
-
-$arr_data = explode("\n", $data);
-array_shift($arr_data);
+$arr_data = yahoo($symbol, $start, $end, $additionalDaysBack);
 
 preg_match('/^([0-9]{4})([0-9]{2})([0-9]{2})$/', $start, $matches);
 $stActual = strtotime($matches[2] . '/' . $matches[3] . '/' . $matches[1]);
-
-
-$arr_temp = array();
-//$arr_data = array_reverse($arr_data);
-foreach ($arr_data as $row) {
-	list($d, $o, $h, $l, $c, $a, $v) = explode(",", $row);
-	$d1 = substr($d, 5, 2);
-	$d2 = substr($d, 8, 2);
-	$d3 = substr($d, 0, 4);
-	$factor = $a / $c;
-	$o = $o * $factor;
-	$h = $h * $factor;
-	$l = $l * $factor;
-	$c = $a * $factor;
-	$v = $v / $factor;
-	$arr_temp[] = "$symbol,$d1" . '/' . $d2 . '/' . "$d3,$v,$h,$l,$o,$c";
-} 
-$arr_data = $arr_temp;
 
 
 $offset = 0;
@@ -110,65 +89,66 @@ $lower_plots = 0;
 $arr_plots = array();
 
 // SMA
+$draw_sma1 = 0;
+$draw_sma2 = 0;
+$arr_sma1 = array();
+$arr_sma2 = array();
 if (isset($_REQUEST['sma1']) && $_REQUEST['sma1'] != "") {
 	$sma_days1 = $_REQUEST['sma1'];
 	$arr_sma1 = SMA ($arr_data, $sma_days1, 6, 2);
 	$draw_sma1 = 1;
 }
-else
-	$draw_sma1 = 0;
 if (isset($_REQUEST['sma2']) && $_REQUEST['sma2'] != "") {
 	$sma_days2 = $_REQUEST['sma2'];
 	$arr_sma2 = SMA ($arr_data, $sma_days2, 6, 2);
 	$draw_sma2 = 1;
 }
-else
-	$draw_sma2 = 0;
 
 // EMA
+$draw_ema1 = 0;
+$draw_ema2 = 0;
+$arr_ema1 = array();
+$arr_ema2 = array();
 if (isset($_REQUEST['ema1']) && $_REQUEST['ema1'] != "") {
 	$ema_days1 = $_REQUEST['ema1'];
 	$arr_ema1 = EMA ($arr_data, $ema_days1, 6, 2);
 	$draw_ema1 = 1;
 }
-else
-	$draw_ema1 = 0;
 if (isset($_REQUEST['ema2']) && $_REQUEST['ema2'] != "") {
 	$ema_days2 = $_REQUEST['ema2'];
 	$arr_ema2 = EMA ($arr_data, $ema_days2, 6, 2);
 	$draw_ema2 = 1;
 }
-else
-	$draw_ema2 = 0;
 
 // Bollinger
+$upper = array();
+$lower = array();
+$middle = array();
+$draw_bol = 0;
 if (isset($_REQUEST['bol']) && $_REQUEST['bol'] != "") {
 	list($bol_days, $bol_mult) = explode(",", $_REQUEST['bol']);
-	$upper = array();
-	$lower = array();
-	$middle = array();
+
 	Bollinger ($arr_data, $bol_days, $bol_mult, 6, 2);
 	$draw_bol = 1;
 }
-else
-	$draw_bol = 0;
+
 
 // PC
+$pc_high = array();
+$pc_low = array();
+$draw_pc = 0;
 if (isset($_REQUEST['pc']) && $_REQUEST['pc'] != "") {
 	$pc_days = $_REQUEST['pc'];
-	$pc_high = array();
-	$pc_low = array();
 	PriceChannels ($arr_data, $pc_days, 3, 4, 2);
 	$draw_pc = 1;
-}
-else
-	$draw_pc = 0;
+}	
 
 
 // MACD
+$macd = array();
+$draw_macd = 0;
 if (isset($_REQUEST['macd']) && $_REQUEST['macd'] != "") {
 	list($days_fast, $days_slow, $days_smooth) = explode(",", $_REQUEST['macd']);
-	$macd = array();
 	$macd_ema = array();
 	$divergence = array();
 	MACD($arr_data, $days_fast, $days_slow, $days_smooth, 6, 3);
@@ -176,10 +156,11 @@ if (isset($_REQUEST['macd']) && $_REQUEST['macd'] != "") {
 	$lower_plots++;
 	$arr_plots['macd'] = $lower_plots;
 }
-else
-	$draw_macd = 0;
+	
 
 // Candles
+$draw_candle = 0;
+$cand_height = 0;
 if (isset($_REQUEST['cand']) && $_REQUEST['cand'] = "y") {
 	$draw_candle = 1;
 	$lower_plots++;
@@ -187,15 +168,13 @@ if (isset($_REQUEST['cand']) && $_REQUEST['cand'] = "y") {
 	list ($cand, $cand_len) = Candles($arr_data, 5, 6, 3, 4);
 	$cand_height = 150;
 }
-else {
-	$draw_candle = 0;
-	$cand_height = 0;
-}
+
 
 // RSI
+$rsi = array();
+$draw_rsi = 0;	
 if (isset($_REQUEST['rsi']) && $_REQUEST['rsi'] != "") {
 	$rsi_days = $_REQUEST['rsi'];
-	$rsi = array();
 	RSI ($arr_data, $rsi_days, 6, 2);
 	$maxR = 100;
 	$minR = 0;
@@ -203,31 +182,29 @@ if (isset($_REQUEST['rsi']) && $_REQUEST['rsi'] != "") {
 	$lower_plots++;
 	$arr_plots['rsi'] = $lower_plots;
 }
-else
-	$draw_rsi = 0;	
+	
 
 // MFI
+$mfi = array();
+$draw_mfi = 0;
 if (isset($_REQUEST['mfi']) && $_REQUEST['mfi'] != "") {
 	$mfi_days = $_REQUEST['mfi'];
-	$mfi = array();
 	MFI ($arr_data, $mfi_days, 3, 4, 6, 2);
 	$maxMFI = 100;
 	$minMFI = 0;
 	$draw_mfi = 1;
 	$lower_plots++;
 	$arr_plots['mfi'] = $lower_plots;
-	
-	$mfi_sma = SMA ($mfi, 5, 6, 2);
 }
-else
-	$draw_rsi = 0;	
+		
 	
 // ADX
+$adx = array();
+$draw_adx = 0;
 if (isset($_REQUEST['adx']) && $_REQUEST['adx'] != "") {
 	$adx_days = $_REQUEST['adx'];
 	$DI_plus = array();
 	$DI_minus = array();
-	$adx = array();
 	ADX ($arr_data, $adx_days, 6, 3, 4, 2);
 	$maxA = 100;
 	$minA = 0;
@@ -235,35 +212,33 @@ if (isset($_REQUEST['adx']) && $_REQUEST['adx'] != "") {
 	$lower_plots++;
 	$arr_plots['adx'] = $lower_plots;
 }
-else
-	$draw_adx = 0;	
+
 
 // Accumulation/Distribution line
-if (isset($_REQUEST['adl']) && $_REQUEST['adl'] != "") {
+$adl = array();
+$draw_adl = 0;
+if (isset($_REQUEST['adl']) && $_REQUEST['adl'] == "y") {
 	//$s, $d, $v, $h, $l, $o, $c
-	$adl = array();
 	// ADL (arr, h, l, c, v)
 	ADL ($arr_data, 3, 4, 6, 2);
 	$draw_adl = 1;
 	$lower_plots++;
 	$arr_plots['adl'] = $lower_plots;
 }
-else
-	$draw_adl = 0;
+	
 
 
 // Vol
-if (isset($_REQUEST['vol']) && $_REQUEST['vol'] == "y")
+$draw_vol = 0;
+if (isset($_REQUEST['vol']) && $_REQUEST['vol'] == "y") {
 	$draw_vol = 1;
-else
-	$draw_vol = 0;
+}
 
 // Fib
-if (isset($_REQUEST['fib']) && $_REQUEST['fib'] == "y")
+$draw_fib = 0;
+if (isset($_REQUEST['fib']) && $_REQUEST['fib'] == "y") {
 	$draw_fib = 1;
-else
-	$draw_fib = 0;
-
+}
 
 
 if ($count > 750 || $count < 2) {
@@ -271,7 +246,6 @@ if ($count > 750 || $count < 2) {
 	exit;
 }
 
-//echo "<pre>"; print_r($adx); echo "</pre>"; exit;
 
 $col = 12; // space for each candle column
 $colCandle 	= 6; // space for each candle
@@ -427,6 +401,8 @@ if (isset($_REQUEST['crop']) && $_REQUEST['crop'] == 'n') {
 
 // find min and max for the MACD data
 $cnt = 0;
+$minM = "";
+$maxM = "";
 for ($I = $offset; $I < count($macd); $I++) {
 	$m = $macd[$I];
 	$e = $macd_ema[$I];
@@ -482,8 +458,8 @@ for ($I = $offset; $I < count($adx); $I++) {
 }
 
 // ADL min max
-$ADL_min = $adl[$offset];
-$ADL_max = $adl[$offset];
+$ADL_min = isset($adl[$offset]) ? $adl[$offset] : null;
+$ADL_max = isset($adl[$offset]) ? $adl[$offset] : null;
 for ($I = $offset; $I < count($adl); $I++) {
 	if ($adl[$I] < $ADL_min)
 		$ADL_min = $adl[$I];
@@ -536,7 +512,8 @@ else if ($height >= 200)
 else
 	$arr_grid = array(1, 0.88, 0.75, 0.62, 0.5, 0.25, 0.38, 0.12, 0);
 
-
+// unkown usage
+$facVol = 0;
 
 foreach ($arr_grid as $line) {
 	$Yline = $height - ($height * $line);
@@ -576,6 +553,8 @@ if ($draw_macd == 1) {
 	}
 }
 
+$textLength = null;
+
 if ($draw_candle) {
 	$text = "Candlestick";
 	imagestring($im, 2, 20, $topMargin + $height + 40 + (($arr_plots['cand'] - 1) * ($space_between_upper_lower + $bottom_height)), 
@@ -586,25 +565,26 @@ if ($draw_candle) {
 // plots
 $cnt = 0;
 $dif = $max - $min;
-$fac = $height / $dif;
-$difVol = $maxVol - $minVol;
-$facVol = $height / $difVol;
-$difM = $maxM - $minM;
-$facM = $bottom_height / $difM;
+$fac = ($dif != 0) ? $height / $dif : 0;
 
-//$facR = $bottom_height / 100;
+
+$difVol = $maxVol - $minVol;
+$facVol = ($difVol != 0) ? $height / $difVol : 0;
+
+$difM = $maxM - $minM;
+$facM = ($difM != 0) ? $bottom_height / $difM : 0;
+
 $difR = $maxR - $minR;
-$facR = $bottom_height / $difR;
+$facR = ($difR != 0) ? $bottom_height / $difR : 0;
 
 $difMFI = $maxMFI - $minMFI;
-$facMFI = $bottom_height / $difMFI;
+$facMFI = ($difMFI != 0) ? $bottom_height / $difMFI : 0;
 
-//$facA = $bottom_height / 100;
 $difA = $maxA - $minA;
-$facA = $bottom_height / $difA;
+$facA = ($difA != 0) ? $bottom_height / $difA : 0;
 
 $difADL = $ADL_max - $ADL_min;
-$facADL = $bottom_height / $difADL;
+$facADL = ($difADL != 0) ? $bottom_height / $difADL : 0;
 
 $arr_grid = array(100, 95, 90, 85, 80, 75, 70, 65, 60, 55, 50, 45, 40, 35, 30, 25, 20, 15, 10, 5, 0);
 // attempt at smart rsi/adx horizontal lines
@@ -730,6 +710,11 @@ if ($draw_mfi == 1) {
 		$text, $lightgreen); 
 	$textLength += strlen($text);
 }
+
+
+$prev_mon = null;
+$prev_year = null;
+$top_margin = null;
 
 $test_point = count($arr_data) - 5;
 
@@ -1135,8 +1120,7 @@ if ($draw_candle == 1) {
 }
 
 $text = $symbol;
-if ($arr_today['time'] != "")
-	$text .= " (" . $arr_today['time'] . ")";
+//if ($arr_today['time'] != "") 	$text .= " (" . $arr_today['time'] . ")";
 imagestring($im, 5, $canvasWidth - (9 * strlen($text)) - $rightMargin, 6, strtoupper($text), $white); //symbol
 imagestring($im, 2, $canvasWidth - (6 * strlen("(c) SCE 2010-" . date('Y'))) - $rightMargin, 24, "(c) SCE 2010-" . date('Y'), $lightgrey); 
 

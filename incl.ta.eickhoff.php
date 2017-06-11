@@ -12,15 +12,18 @@ function average($array) {
 function SMA ($array_ref, $days, $index, $decimal_places) {
 	$width = array();
 	$running = array();
+	$ma_count = 0;
 	$format = '%1.' . $decimal_places . 'f';
 
 	foreach ($array_ref as $ele)	{
-		//chomp;
+
 		$data = explode(",", $ele);
 
 		if (count($width) < $days) {
 			$width[] = $data[$index];
-			if (count($width) == $days) { $ma_count = average($width); }
+			if (count($width) == $days) { 
+				$ma_count = average($width); 
+			}
 		}
 		else {
 			array_shift($width);
@@ -40,6 +43,7 @@ function EMA ($array_ref, $days, $index, $decimal_places) {
 	$width = array();
 	$running = array();
 	$previous_ema = 0;
+	$ma_count = 0;
 	$format = '%1.' . $decimal_places . 'f';
 	
 	$k = 2.0 / ($days + 1);
@@ -50,7 +54,9 @@ function EMA ($array_ref, $days, $index, $decimal_places) {
 		// prior to the period, build array; at Period calculate sma
 		if (count($width) < $days) {
 			$width[] = $data[$index];
-			$ma_count = average($width); 
+			if (count($width) == $days) { 
+				$ma_count = average($width); 
+			}
 		}
 		// post Period; just calculate ema
 		else {
@@ -67,6 +73,9 @@ function Bollinger ($array_ref, $days, $multiplier, $index, $decimal_places) {
 	global $middle;
 	global $upper;
 	global $lower;
+	$sma = "";
+	$upp = "";
+	$low = "";
 	$format = '%1.' . $decimal_places . 'f';
 
 	foreach ($array_ref as $ele) {
@@ -109,6 +118,8 @@ function PriceChannels ($array_ref, $days, $index_high, $index_low, $decimal_pla
 	$l_width = array();
 	global $pc_high;
 	global $pc_low;
+	$low = "";
+	$high = "";
 	$format = '%1.' . $decimal_places . 'f';
 
 	foreach ($array_ref as $ele)	{
@@ -201,6 +212,8 @@ function true_range ($High, $Low, $yesterday_Close) {
 }
 
 function avg_gain ($ref) {
+	$loss = null;
+	$gain = null;
 	foreach ($ref as $ele) {
 		if ($ele > 0) 
 			$gain += $ele;
@@ -212,6 +225,8 @@ function avg_gain ($ref) {
 }
 
 function avg_loss ($ref) {
+	$loss = null;
+	$gain = null;
 	foreach ($ref as $ele) {
 		if ($ele < 0) 
 			$loss += abs($ele);
@@ -231,6 +246,7 @@ function RSI ($array_ref, $days, $index, $decimal_places) {
 	$previous_avg_loss = array();
 	$previous_avg_gain = array();
 	global $rsi;
+	$RSI = null;
 
 	// iterate over historical data rows
 	for ($i = 0; $i < count($array_ref); $i++) {
@@ -332,6 +348,17 @@ function ADX ($array_ref, $days, $index_close, $index_high, $index_low, $decimal
 	global $DI_plus;
 	global $DI_minus;
 	global $adx;
+	
+	$tr14 = null;
+	$DM14_plus = null;
+	$DM14_minus = null;
+	$ADX = null;
+	$DI14_plus = null;
+	$DI14_minus = null;
+	$tr_sum = null;
+	$DM_plus_sum = null;
+	$DM_minus_sum = null;
+	$DX_sum = null;
 	
 	// iterate over historical data rows
 	for ($i = 0; $i < count($array_ref); $i++) {
@@ -2149,66 +2176,5 @@ function Candles ($array_ref, $index_open, $index_close, $index_high, $index_low
 	//return array(array_slice($CandleColor, 10), array_slice($CandleTrend, 10), array_slice($CandlePatterns, 10));
 }
 
-function yahoo($symbol, $start_date, $end_date, $additional_days_back) {
-	// scrape page for cookie/crumb
-	$result = curl(array(
-		"url" => "https://finance.yahoo.com/quote/{$symbol}",
-		"cookie" => false,
-		"header" => true
-	));
-
-	$cookie = get_cookie($result);
-	$crumb = get_crumb($result);
-	
-	$start = strtotime("{$start_date} midnight -{$additional_days_back} day" );
-	$end = strtotime("{$end_date} midnight +1 day" );
-
-	// get CSV data
-	$result = curl(array(
-		"url" => "https://query1.finance.yahoo.com/v7/finance/download/{$symbol}?period1={$start}&period2={$end}&interval=1d&events=history&crumb={$crumb}",
-		"cookie" => "Cookie: B={$cookie}",
-		"header" => false
-	));	
-	
-	return $result;
-}
-
-
-function curl($param) {
-	$ch = curl_init($param["url"]);
-
-	if ($param["cookie"]) {
-		curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-			$param["cookie"]
-		));
-	}
-	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-
-	// return headers
-	if ($param["header"]) {
-		curl_setopt($ch, CURLOPT_HEADER, 1);
-	}
-	$result = curl_exec($ch);
-	curl_close($ch);
-	
-	return $result;
-}
-
-// get cookie
-function get_cookie($result) {
-	$cookies = array();
-	preg_match_all('/Set-Cookie:(?<cookie>\s{0,}.*)$/im', $result, $cookies);
-	foreach ($cookies[0] as $cookie) {
-		preg_match_all('/Set-Cookie:\s{0,}B=(.*?);/im', $cookie, $cookieParts);
-	} 
-	return $cookieParts[1][0];
-}
-
-// get crumb
-function get_crumb($result) {
-	preg_match('"CrumbStore\":{\"crumb\":\"(?<crumb>.+?)\"}"', $result, $crumb);  // can contain \uXXXX chars
-	return json_decode('"' . $crumb['crumb'] . '"');
-}
 
 ?>
