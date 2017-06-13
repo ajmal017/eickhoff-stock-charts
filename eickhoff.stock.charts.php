@@ -4,8 +4,8 @@
 
 date_default_timezone_set('America/Chicago');
 
-require_once("incl.yahoo.historical.data.php");
-require_once("incl.ta.eickhoff.php");
+require_once("../php-include/incl.yahoo.historical.data.php");
+require_once("../php-include/incl.ta.eickhoff.php");
 
 $symbol = $_REQUEST['symbol'];
 $start = $_REQUEST['start'];
@@ -68,8 +68,12 @@ if (isset($_REQUEST['mfi']) && $_REQUEST['mfi'] != "") {
 
 $additionalDaysBack = floor($additionalDaysBack * 1.7);
 
-
-$arr_data = yahoo($symbol, $start, $end, $additionalDaysBack);
+$arr_data = yahoo(array(
+	"symbol" => $symbol, 
+	"start" => $start, 
+	"end" => $end, 
+	"offset" => $additionalDaysBack
+));
 
 preg_match('/^([0-9]{4})([0-9]{2})([0-9]{2})$/', $start, $matches);
 $stActual = strtotime($matches[2] . '/' . $matches[3] . '/' . $matches[1]);
