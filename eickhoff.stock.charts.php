@@ -1188,13 +1188,13 @@ function draw_candle_box($im, $index, $pattern_length) {
 	$y2 = $candle_box[$index]['y2'];
 	
 	for ($i = $index - $pattern_length + 1; $i < $index; $i++) {
-		if ($candle_box[$i]['x1'] < $x1)
+		if (isset($candle_box[$i]['x1']) && $candle_box[$i]['x1'] < $x1)
 			$x1 = $candle_box[$i]['x1'];
-		if ($candle_box[$i]['y1'] < $y1)
+		if (isset($candle_box[$i]['y1']) && $candle_box[$i]['y1'] < $y1)
 			$y1 = $candle_box[$i]['y1'];
-		if ($candle_box[$i]['x2'] > $x2)
+		if (isset($candle_box[$i]['x2']) && $candle_box[$i]['x2'] > $x2)
 			$x2 = $candle_box[$i]['x2'];
-		if ($candle_box[$i]['y2'] > $y2)
+		if (isset($candle_box[$i]['y2']) && $candle_box[$i]['y2'] > $y2)
 			$y2 = $candle_box[$i]['y2'];
 	}
 	
