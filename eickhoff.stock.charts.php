@@ -169,7 +169,7 @@ if (isset($_REQUEST['cand']) && $_REQUEST['cand'] = "y") {
 	$draw_candle = 1;
 	$lower_plots++;
 	$arr_plots['cand'] = $lower_plots;
-	list ($cand, $cand_len) = Candles($arr_data, 5, 6, 3, 4);
+	list ($cand_color, $cand_trend, $cand, $cand_len) = Candles($arr_data, 5, 6, 3, 4);
 	$cand_height = 150;
 }
 
